@@ -8,31 +8,190 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+
     header {
       background: #1a6b3c;
       color: #fff;
       padding: 0.75rem 1.25rem;
       font-size: 1.1rem;
       font-weight: 600;
+      flex-shrink: 0;
     }
+
+    #content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* 左側列表 */
+    #sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      border-right: 1px solid #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      background: #fafafa;
+    }
+    #sidebar-header {
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #555;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    #sidebar-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .sidebar-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+    }
+    .sidebar-item:hover { background: #f0f7f3; }
+    .sidebar-item.active { background: #e6f4ec; }
+    .sidebar-item-title { font-size: 0.9rem; font-weight: 600; }
+    .sidebar-item-meta { font-size: 0.78rem; color: #888; margin-top: 0.2rem; }
+    .sidebar-item-price { color: #1a6b3c; font-weight: 600; }
+
     #map { flex: 1; }
+
+    /* 右側詳情面板 */
+    #panel {
+      width: 0;
+      flex-shrink: 0;
+      background: #fff;
+      border-left: none;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width 0.25s ease;
+      position: relative;
+    }
+    #panel.open {
+      width: 340px;
+      border-left: 1px solid #e0e0e0;
+    }
+
+    #panel-close {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.75rem;
+      background: none;
+      border: none;
+      font-size: 1.3rem;
+      cursor: pointer;
+      color: #555;
+      line-height: 1;
+    }
+    #panel-close:hover { color: #000; }
+
+    #panel-body {
+      padding: 1.25rem 1rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #panel-city {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #1a6b3c;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+
+    #panel-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    #panel-price {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1a6b3c;
+      margin-bottom: 1rem;
+    }
+    #panel-price span {
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: #666;
+    }
+
+    #panel-images {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    #panel-images img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+
+    #panel-content {
+      font-size: 0.9rem;
+      color: #333;
+      line-height: 1.7;
+      margin-bottom: 1.25rem;
+    }
+
+    #panel-link {
+      display: block;
+      background: #1877f2;
+      color: #fff;
+      text-align: center;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    #panel-link:hover { background: #145db2; }
+    #panel-link.hidden { display: none; }
   </style>
 </head>
 <body>
 
 <header>rent-tw — 台灣租屋地圖</header>
-<div id="map"></div>
+
+<div id="content">
+  <div id="sidebar">
+    <div id="sidebar-header">租屋列表</div>
+    <ul id="sidebar-list"></ul>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="panel">
+    <button id="panel-close" title="關閉">✕</button>
+    <div id="panel-body">
+      <div id="panel-city"></div>
+      <div id="panel-title"></div>
+      <div id="panel-price"></div>
+      <div id="panel-images"></div>
+      <div id="panel-content"></div>
+      <a id="panel-link" target="_blank" rel="noopener">查看 FB 原始貼文</a>
+    </div>
+  </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   const taipeibounds = L.latLngBounds(
-    [24.95, 121.40],  // 西南角
-    [25.22, 121.70]   // 東北角
+    [24.95, 121.40],
+    [25.22, 121.70]
   );
 
   const map = L.map('map', {
     maxBounds: taipeibounds,
-    maxBoundsViscosity: 1.0,  // 硬邊界，不會有彈性
+    maxBoundsViscosity: 1.0,
     minZoom: 11,
   }).setView([25.05, 121.55], 12);
 
@@ -41,18 +200,94 @@
     maxZoom: 19,
   }).addTo(map);
 
+  const panel      = document.getElementById('panel');
+  const panelClose = document.getElementById('panel-close');
+  const elCity     = document.getElementById('panel-city');
+  const elTitle    = document.getElementById('panel-title');
+  const elPrice    = document.getElementById('panel-price');
+  const elImages   = document.getElementById('panel-images');
+  const elContent  = document.getElementById('panel-content');
+  const elLink     = document.getElementById('panel-link');
+  const sidebarList = document.getElementById('sidebar-list');
+
+  let allPosts = [];
+  const markerMap = new Map(); // id -> marker
+
+  function openPanel(post) {
+    elCity.textContent  = post.city;
+    elTitle.textContent = post.title;
+    elPrice.innerHTML   = `NT$${post.price.toLocaleString('zh-TW')} <span>/ 月</span>`;
+    elContent.textContent = post.content || '';
+
+    elImages.innerHTML = '';
+    (post.images || []).forEach(src => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = post.title;
+      elImages.appendChild(img);
+    });
+
+    if (post.post_link) {
+      elLink.href = post.post_link;
+      elLink.classList.remove('hidden');
+    } else {
+      elLink.classList.add('hidden');
+    }
+
+    panel.classList.add('open');
+  }
+
+  function selectPost(post) {
+    openPanel(post);
+    // 更新 sidebar active 狀態
+    sidebarList.querySelectorAll('.sidebar-item').forEach(li => {
+      li.classList.toggle('active', Number(li.dataset.id) === post.id);
+    });
+  }
+
+  function updateSidebar() {
+    const bounds = map.getBounds();
+    const visible = allPosts.filter(p => bounds.contains([p.lat, p.lng]));
+    sidebarList.innerHTML = '';
+    visible.forEach(post => {
+      const li = document.createElement('li');
+      li.className = 'sidebar-item';
+      li.dataset.id = post.id;
+      li.innerHTML = `
+        <div class="sidebar-item-title">${post.title}</div>
+        <div class="sidebar-item-meta">
+          ${post.city} &nbsp;·&nbsp;
+          <span class="sidebar-item-price">NT$${post.price.toLocaleString('zh-TW')}</span>
+        </div>`;
+      li.addEventListener('click', () => {
+        map.setView([post.lat, post.lng], map.getZoom());
+        selectPost(post);
+      });
+      sidebarList.appendChild(li);
+    });
+  }
+
+  panelClose.addEventListener('click', () => {
+    panel.classList.remove('open');
+    sidebarList.querySelectorAll('.sidebar-item').forEach(li => li.classList.remove('active'));
+  });
+
+  map.on('moveend zoomend', updateSidebar);
+
   fetch('/api/listings')
     .then(res => {
       if (!res.ok) throw new Error('無法載入資料');
       return res.json();
     })
     .then(listings => {
-      listings.forEach(l => {
-        const price = l.price.toLocaleString('zh-TW');
-        L.marker([l.lat, l.lng])
-          .bindPopup(`<strong>${l.title}</strong><br/><span style="color:#1a6b3c">&#x25cf; ${l.city}</span><br/>NT$${price} / 月`)
-          .addTo(map);
+      allPosts = listings;
+      listings.forEach(post => {
+        const marker = L.marker([post.lat, post.lng])
+          .addTo(map)
+          .on('click', () => selectPost(post));
+        markerMap.set(post.id, marker);
       });
+      updateSidebar();
     })
     .catch(err => {
       console.error(err);
