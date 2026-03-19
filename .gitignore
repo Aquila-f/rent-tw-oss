@@ -1,6 +1,7 @@
 # binary
 rent-tw-oss
 rent-tw
+*.exe
 
 # env
 .env
