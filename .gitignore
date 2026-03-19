@@ -1,0 +1,15 @@
+# binary
+rent-tw-oss
+rent-tw
+
+# env
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
