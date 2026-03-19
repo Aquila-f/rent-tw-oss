@@ -1,33 +1,45 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 )
 
-type Listing struct {
-	ID    int     `json:"id"`
-	Title string  `json:"title"`
-	Price int     `json:"price"` // NTD per month
-	Lat   float64 `json:"lat"`
-	Lng   float64 `json:"lng"`
-	City  string  `json:"city"`
+type RentalPost struct {
+	ID       string   `json:"id"`
+	Title    string   `json:"title"`
+	Price    int      `json:"price"` // NTD per month
+	Lat      float64  `json:"lat"`
+	Lng      float64  `json:"lng"`
+	City     string   `json:"city"`
+	Content  string   `json:"content"`
+	Images   []string `json:"images"`
+	PostLink string   `json:"post_link"`
 }
 
-var listings = []Listing{
-	{1, "大安區溫馨套房", 18000, 25.0330, 121.5654, "台北"},
-	{2, "信義區捷運旁一房", 22000, 25.0408, 121.5677, "台北"},
-	{3, "中山區明亮雅房", 14500, 25.0630, 121.5248, "台北"},
-	{4, "文山區整層分租", 9800, 24.9980, 121.5700, "台北"},
-	{5, "板橋兩房寬敞公寓", 16000, 25.0143, 121.4632, "新北"},
-	{6, "淡水河景套房", 11000, 25.1683, 121.4381, "新北"},
-	{7, "西區中心地帶整層", 12000, 24.1477, 120.6736, "台中"},
-	{8, "中興大學周邊雅房", 8500, 24.1185, 120.6843, "台中"},
-	{9, "府城歷史街區公寓", 9000, 22.9999, 120.2269, "台南"},
-	{10, "愛河旁景觀套房", 13000, 22.6273, 120.3014, "高雄"},
-	{11, "左營高鐵旁一房", 10500, 22.6879, 120.2940, "高雄"},
+func loadListings(path string) ([]RentalPost, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var listings []RentalPost
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		var p RentalPost
+		if err := json.Unmarshal(scanner.Bytes(), &p); err != nil {
+			return nil, err
+		}
+		listings = append(listings, p)
+	}
+	return listings, scanner.Err()
 }
+
+var listings []RentalPost
 
 func listingsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -40,6 +52,12 @@ func listingsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	var err error
+	listings, err = loadListings("listings.jsonl")
+	if err != nil {
+		log.Fatalf("failed to load listings: %v", err)
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/listings", listingsHandler)
 	mux.Handle("/", http.FileServer(http.Dir("static")))
