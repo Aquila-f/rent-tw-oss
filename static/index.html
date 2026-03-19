@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rent-tw — 台灣租屋地圖</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+    header {
+      background: #1a6b3c;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    #map { flex: 1; }
+  </style>
+</head>
+<body>
+
+<header>rent-tw — 台灣租屋地圖</header>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const taipeibounds = L.latLngBounds(
+    [24.95, 121.40],  // 西南角
+    [25.22, 121.70]   // 東北角
+  );
+
+  const map = L.map('map', {
+    maxBounds: taipeibounds,
+    maxBoundsViscosity: 1.0,  // 硬邊界，不會有彈性
+    minZoom: 11,
+  }).setView([25.05, 121.55], 12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  fetch('/api/listings')
+    .then(res => {
+      if (!res.ok) throw new Error('無法載入資料');
+      return res.json();
+    })
+    .then(listings => {
+      listings.forEach(l => {
+        const price = l.price.toLocaleString('zh-TW');
+        L.marker([l.lat, l.lng])
+          .bindPopup(`<strong>${l.title}</strong><br/><span style="color:#1a6b3c">&#x25cf; ${l.city}</span><br/>NT$${price} / 月`)
+          .addTo(map);
+      });
+    })
+    .catch(err => {
+      console.error(err);
+      alert('無法載入租屋資料，請確認伺服器是否運行中。');
+    });
+</script>
+
+</body>
+</html>
