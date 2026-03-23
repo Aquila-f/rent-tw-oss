@@ -14,7 +14,21 @@
 <div id="content">
   <div id="sidebar">
     <div id="sidebar-header">租屋列表</div>
-    <details id="filters" open>
+    <div id="sort-bar">
+      <label for="sort-select">排序</label>
+      <select id="sort-select">
+        <option value="time-desc">時間 新→舊</option>
+        <option value="time-asc">時間 舊→新</option>
+        <option value="price-asc">價錢 低→高</option>
+        <option value="price-desc">價錢 高→低</option>
+      </select>
+    </div>
+    <ul id="sidebar-list"></ul>
+  </div>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+    <details id="filters">
       <summary>篩選條件</summary>
       <div class="filter-body">
         <div class="filter-group">
@@ -41,19 +55,7 @@
         <div id="filter-count"></div>
       </div>
     </details>
-    <div id="sort-bar">
-      <label for="sort-select">排序</label>
-      <select id="sort-select">
-        <option value="time-desc">時間 新→舊</option>
-        <option value="time-asc">時間 舊→新</option>
-        <option value="price-asc">價錢 低→高</option>
-        <option value="price-desc">價錢 高→低</option>
-      </select>
-    </div>
-    <ul id="sidebar-list"></ul>
   </div>
-
-  <div id="map"></div>
 
   <div id="panel">
     <button id="panel-close" title="關閉">✕</button>
@@ -99,7 +101,9 @@
     maxBounds: taipeibounds,
     maxBoundsViscosity: 1.0,
     minZoom: 11,
+    zoomControl: false,
   }).setView([25.05, 121.55], 12);
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
