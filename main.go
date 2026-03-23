@@ -103,6 +103,7 @@ func loadListings(path string) ([]RentalPost, error) {
 	}
 	defer f.Close()
 
+	seen := make(map[string]int) // post_id -> index in results
 	var results []RentalPost
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -113,7 +114,13 @@ func loadListings(path string) ([]RentalPost, error) {
 		if r.Extracted.IsRental == nil || !*r.Extracted.IsRental {
 			continue
 		}
-		results = append(results, flatten(r))
+		flat := flatten(r)
+		if idx, dup := seen[flat.PostID]; dup {
+			results[idx] = flat // keep the latest
+		} else {
+			seen[flat.PostID] = len(results)
+			results = append(results, flat)
+		}
 	}
 	return results, scanner.Err()
 }
