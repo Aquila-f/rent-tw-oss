@@ -187,12 +187,20 @@ header {
   flex: 1;
 }
 
+.hidden { display: none !important; }
+
 #panel-city {
   font-size: 0.75rem;
   font-weight: 600;
   color: #1a6b3c;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+}
+
+#panel-timestamp {
+  font-size: 0.75rem;
+  color: #999;
   margin-bottom: 0.4rem;
 }
 
@@ -215,26 +223,178 @@ header {
   color: #666;
 }
 
-#panel-images {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+/* 房屋資訊摘要 */
+#panel-info {
+  background: #f5faf7;
+  border: 1px solid #e0ede5;
+  border-radius: 8px;
+  padding: 0.75rem;
   margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
-#panel-images img {
-  width: 100%;
-  max-height: 200px;
-  object-fit: cover;
-  border-radius: 6px;
+#panel-info-type { font-weight: 600; }
+#panel-info-floor { color: #666; }
+#panel-info-address { color: #666; font-size: 0.8rem; }
+#panel-info-coliving {
+  display: inline-block;
+  background: #fff3cd;
+  color: #856404;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  align-self: flex-start;
 }
 
+/* 設備標籤 */
+#panel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.panel-tag {
+  background: #e6f4ec;
+  color: #1a6b3c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* 租約資訊 */
+#panel-lease {
+  font-size: 0.82rem;
+  color: #555;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#panel-lease-months,
+#panel-lease-gender {
+  padding-left: 0.2rem;
+}
+
+/* 圖片 */
+#panel-images {
+  margin-bottom: 1rem;
+}
+.panel-img-hero {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.panel-thumbs {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+.panel-img-thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.panel-img-thumb:hover {
+  border-color: #1a6b3c;
+}
+
+/* 內容折疊 */
+#panel-content-wrap {
+  margin-bottom: 1.25rem;
+}
 #panel-content {
   font-size: 0.9rem;
   color: #333;
   line-height: 1.7;
-  margin-bottom: 1.25rem;
   white-space: pre-wrap;
   word-break: break-word;
+}
+#panel-content.collapsed {
+  max-height: 8em;
+  overflow: hidden;
+  position: relative;
+}
+#panel-content.collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3em;
+  background: linear-gradient(transparent, #fff);
+  pointer-events: none;
+}
+#panel-content-toggle {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  color: #1a6b3c;
+  cursor: pointer;
+  margin-top: 0.4rem;
+  font-weight: 600;
+}
+#panel-content-toggle:hover {
+  background: #f0f7f3;
+}
+
+/* Highlight */
+.hl-phone {
+  color: #0d6efd;
+  font-weight: 600;
+  text-decoration: underline;
+}
+.hl-line {
+  color: #00b300;
+  font-weight: 600;
+  background: #e6ffe6;
+  padding: 0 0.2rem;
+  border-radius: 2px;
+}
+
+/* Lightbox */
+#lightbox {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+#lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+#lightbox-close {
+  position: absolute;
+  top: 1rem; right: 1.5rem;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  cursor: pointer;
 }
 
 #panel-link {
@@ -249,7 +409,6 @@ header {
   font-weight: 600;
 }
 #panel-link:hover { background: #145db2; }
-#panel-link.hidden { display: none; }
 
 /* RWD */
 @media (max-width: 768px) {
@@ -283,5 +442,12 @@ header {
   }
   #panel.open {
     width: 100vw;
+  }
+  .panel-img-thumb {
+    width: 50px;
+    height: 50px;
+  }
+  #lightbox-img {
+    max-width: 95vw;
   }
 }

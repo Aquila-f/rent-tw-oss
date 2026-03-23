@@ -59,13 +59,33 @@
     <button id="panel-close" title="關閉">✕</button>
     <div id="panel-body">
       <div id="panel-city"></div>
+      <div id="panel-timestamp"></div>
       <div id="panel-title"></div>
       <div id="panel-price"></div>
+      <div id="panel-info" class="hidden">
+        <div id="panel-info-type"></div>
+        <div id="panel-info-floor"></div>
+        <div id="panel-info-address"></div>
+        <div id="panel-info-coliving" class="hidden">合租</div>
+      </div>
+      <div id="panel-tags"></div>
+      <div id="panel-lease" class="hidden">
+        <div id="panel-lease-months"></div>
+        <div id="panel-lease-gender"></div>
+      </div>
       <div id="panel-images"></div>
-      <div id="panel-content"></div>
+      <div id="panel-content-wrap">
+        <div id="panel-content"></div>
+        <button id="panel-content-toggle" class="hidden">展開全文</button>
+      </div>
       <a id="panel-link" target="_blank" rel="noopener">查看 FB 原始貼文</a>
     </div>
   </div>
+</div>
+
+<div id="lightbox" class="hidden">
+  <button id="lightbox-close">✕</button>
+  <img id="lightbox-img" src="" alt="" />
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -89,11 +109,25 @@
   const panel      = document.getElementById('panel');
   const panelClose = document.getElementById('panel-close');
   const elCity     = document.getElementById('panel-city');
+  const elTimestamp = document.getElementById('panel-timestamp');
   const elTitle    = document.getElementById('panel-title');
   const elPrice    = document.getElementById('panel-price');
+  const elInfo         = document.getElementById('panel-info');
+  const elInfoType     = document.getElementById('panel-info-type');
+  const elInfoFloor    = document.getElementById('panel-info-floor');
+  const elInfoAddress  = document.getElementById('panel-info-address');
+  const elInfoColiving = document.getElementById('panel-info-coliving');
+  const elTags         = document.getElementById('panel-tags');
+  const elLease        = document.getElementById('panel-lease');
+  const elLeaseMonths  = document.getElementById('panel-lease-months');
+  const elLeaseGender  = document.getElementById('panel-lease-gender');
   const elImages   = document.getElementById('panel-images');
   const elContent  = document.getElementById('panel-content');
+  const elContentToggle = document.getElementById('panel-content-toggle');
   const elLink     = document.getElementById('panel-link');
+  const elLightbox     = document.getElementById('lightbox');
+  const elLightboxImg  = document.getElementById('lightbox-img');
+  const elLightboxClose = document.getElementById('lightbox-close');
   const sidebarList = document.getElementById('sidebar-list');
 
   const defaultIcon = new L.Icon.Default();
@@ -173,9 +207,167 @@
   [fElevator, fBalcony, fWasher, fPets].forEach(el => el.addEventListener('change', applyFilters));
   sortSelect.addEventListener('change', updateSidebar);
 
+  // --- Helper: 房屋資訊摘要 ---
+  function populateInfoBlock(post) {
+    const hasAny = post.room_type || post.area_ping != null || post.floor != null || post.district || post.address;
+    elInfo.classList.toggle('hidden', !hasAny);
+    if (!hasAny) return;
+
+    const parts = [];
+    if (post.room_type) parts.push(post.room_type);
+    if (post.area_ping != null) parts.push(post.area_ping + '坪');
+    elInfoType.textContent = parts.join(' · ');
+    elInfoType.classList.toggle('hidden', parts.length === 0);
+
+    if (post.floor != null) {
+      let floorText = post.floor + 'F';
+      if (post.total_floors != null) floorText += ' / ' + post.total_floors + 'F';
+      elInfoFloor.textContent = floorText;
+      elInfoFloor.classList.remove('hidden');
+    } else {
+      elInfoFloor.classList.add('hidden');
+    }
+
+    const addrParts = [];
+    if (post.district) addrParts.push(post.district);
+    if (post.address) addrParts.push(post.address);
+    elInfoAddress.textContent = addrParts.join(' · ');
+    elInfoAddress.classList.toggle('hidden', addrParts.length === 0);
+
+    elInfoColiving.classList.toggle('hidden', !post.is_coliving);
+  }
+
+  // --- Helper: 設備標籤 ---
+  function populateTags(post) {
+    elTags.innerHTML = '';
+    const tagDefs = [
+      { key: 'has_elevator',        label: '有電梯' },
+      { key: 'has_balcony',         label: '有陽台' },
+      { key: 'has_washing_machine', label: '有洗衣機' },
+      { key: 'pets_allowed',        label: '可養寵物' },
+    ];
+    tagDefs.forEach(({ key, label }) => {
+      if (post[key]) {
+        const span = document.createElement('span');
+        span.className = 'panel-tag';
+        span.textContent = label;
+        elTags.appendChild(span);
+      }
+    });
+    elTags.classList.toggle('hidden', elTags.children.length === 0);
+  }
+
+  // --- Helper: 租約資訊 ---
+  function populateLeaseInfo(post) {
+    const hasLease = post.min_lease_months != null || post.gender_restriction;
+    elLease.classList.toggle('hidden', !hasLease);
+    if (!hasLease) return;
+
+    elLeaseMonths.textContent = post.min_lease_months != null
+      ? '最少租 ' + post.min_lease_months + ' 個月' : '';
+    elLeaseMonths.classList.toggle('hidden', post.min_lease_months == null);
+
+    if (post.gender_restriction && post.gender_restriction !== '不限') {
+      elLeaseGender.textContent = '性別限制：' + post.gender_restriction;
+      elLeaseGender.classList.remove('hidden');
+    } else if (post.gender_restriction === '不限') {
+      elLeaseGender.textContent = '性別不限';
+      elLeaseGender.classList.remove('hidden');
+    } else {
+      elLeaseGender.classList.add('hidden');
+    }
+  }
+
+  // --- Helper: 圖片 (hero + thumbnails) ---
+  function populateImages(post) {
+    elImages.innerHTML = '';
+    const imgs = post.images || [];
+    if (imgs.length === 0) return;
+
+    const hero = document.createElement('img');
+    hero.src = imgs[0];
+    hero.alt = post.title || '';
+    hero.className = 'panel-img-hero';
+    hero.addEventListener('click', () => openLightbox(imgs[0]));
+    elImages.appendChild(hero);
+
+    if (imgs.length > 1) {
+      const thumbWrap = document.createElement('div');
+      thumbWrap.className = 'panel-thumbs';
+      imgs.slice(1).forEach(src => {
+        const thumb = document.createElement('img');
+        thumb.src = src;
+        thumb.alt = post.title || '';
+        thumb.className = 'panel-img-thumb';
+        thumb.addEventListener('click', () => openLightbox(src));
+        thumbWrap.appendChild(thumb);
+      });
+      elImages.appendChild(thumbWrap);
+    }
+  }
+
+  function openLightbox(src) {
+    elLightboxImg.src = src;
+    elLightbox.classList.remove('hidden');
+  }
+
+  // --- Helper: 內容 highlight + 折疊 ---
+  const CONTENT_MAX_LENGTH = 300;
+
+  function highlightContent(text) {
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let html = escaped.replace(
+      /(09\d{2}[-\s]?\d{3}[-\s]?\d{3})/g,
+      '<span class="hl-phone">$1</span>'
+    );
+    html = html.replace(
+      /(LINE\s*[:：]\s*)(\S+)/gi,
+      '$1<span class="hl-line">$2</span>'
+    );
+    return html;
+  }
+
+  function populateContent(post) {
+    const text = post.content || '';
+    elContent.innerHTML = highlightContent(text);
+    const isLong = text.length > CONTENT_MAX_LENGTH;
+
+    // Re-query each time since clone-replace detaches the old node
+    const toggleBtn = document.getElementById('panel-content-toggle');
+    if (isLong) {
+      elContent.classList.add('collapsed');
+      toggleBtn.classList.remove('hidden');
+      toggleBtn.textContent = '展開全文';
+      const newBtn = toggleBtn.cloneNode(true);
+      toggleBtn.parentNode.replaceChild(newBtn, toggleBtn);
+      newBtn.addEventListener('click', () => {
+        const collapsed = elContent.classList.toggle('collapsed');
+        newBtn.textContent = collapsed ? '展開全文' : '收合';
+      });
+    } else {
+      elContent.classList.remove('collapsed');
+      toggleBtn.classList.add('hidden');
+    }
+  }
+
+  // --- openPanel (rewritten) ---
   function openPanel(post) {
-    elCity.textContent  = post.city || '';
+    elCity.textContent = post.city || '';
+
+    if (post.timestamp) {
+      const d = new Date(post.timestamp);
+      elTimestamp.textContent = d.toLocaleDateString('zh-TW', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      });
+      elTimestamp.classList.remove('hidden');
+    } else {
+      elTimestamp.textContent = '';
+      elTimestamp.classList.add('hidden');
+    }
+
     elTitle.textContent = post.title || '(無標題)';
+
     elPrice.textContent = '';
     if (post.price != null) {
       elPrice.textContent = 'NT$' + post.price.toLocaleString('zh-TW') + ' ';
@@ -185,15 +377,12 @@
     } else {
       elPrice.textContent = '價格未知';
     }
-    elContent.textContent = post.content || '';
 
-    elImages.innerHTML = '';
-    (post.images || []).forEach(src => {
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = post.title;
-      elImages.appendChild(img);
-    });
+    populateInfoBlock(post);
+    populateTags(post);
+    populateLeaseInfo(post);
+    populateImages(post);
+    populateContent(post);
 
     if (post.post_url) {
       elLink.href = post.post_url;
@@ -270,6 +459,17 @@
     if (selectedPostId !== null) {
       markerMap.get(selectedPostId)?.setIcon(defaultIcon);
       selectedPostId = null;
+    }
+  });
+
+  elLightboxClose.addEventListener('click', () => {
+    elLightbox.classList.add('hidden');
+    elLightboxImg.src = '';
+  });
+  elLightbox.addEventListener('click', (e) => {
+    if (e.target === elLightbox) {
+      elLightbox.classList.add('hidden');
+      elLightboxImg.src = '';
     }
   });
 
