@@ -8,16 +8,92 @@ import (
 	"os"
 )
 
+// rawExtracted maps the Python ExtractedRentalFields dataclass.
+type rawExtracted struct {
+	IsRental          *bool    `json:"is_rental"`
+	Title             *string  `json:"title"`
+	Price             *int     `json:"price"`
+	City              *string  `json:"city"`
+	District          *string  `json:"district"`
+	Address           *string  `json:"address"`
+	AreaPing          *float64 `json:"area_ping"`
+	RoomType          *string  `json:"room_type"`
+	IsColiving        *bool    `json:"is_coliving"`
+	Floor             *int     `json:"floor"`
+	TotalFloors       *int     `json:"total_floors"`
+	HasElevator       *bool    `json:"has_elevator"`
+	HasBalcony        *bool    `json:"has_balcony"`
+	HasWashingMachine *bool    `json:"has_washing_machine"`
+	PetsAllowed       *bool    `json:"pets_allowed"`
+	MinLeaseMonths    *int     `json:"min_lease_months"`
+	GenderRestriction *string  `json:"gender_restriction"`
+}
+
+// rawRecord maps the Python RentalInfo dataclass (nested JSONL input).
+type rawRecord struct {
+	PostID    string       `json:"post_id"`
+	Content   string       `json:"content"`
+	Extracted rawExtracted `json:"extracted"`
+	PostURL   *string      `json:"post_url"`
+	Timestamp *string      `json:"timestamp"`
+	Latitude  *float64     `json:"latitude"`
+	Longitude *float64     `json:"longitude"`
+	Images    []string     `json:"images"`
+}
+
+// RentalPost is the flattened structure served to the frontend.
 type RentalPost struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Price    int      `json:"price"` // NTD per month
-	Lat      float64  `json:"lat"`
-	Lng      float64  `json:"lng"`
-	City     string   `json:"city"`
-	Content  string   `json:"content"`
-	Images   []string `json:"images"`
-	PostLink string   `json:"post_link"`
+	PostID            string   `json:"post_id"`
+	PostURL           *string  `json:"post_url"`
+	Timestamp         *string  `json:"timestamp"`
+	Title             *string  `json:"title"`
+	Price             *int     `json:"price"`
+	Lat               *float64 `json:"lat"`
+	Lng               *float64 `json:"lng"`
+	City              *string  `json:"city"`
+	District          *string  `json:"district"`
+	Address           *string  `json:"address"`
+	Content           string   `json:"content"`
+	Images            []string `json:"images"`
+	AreaPing          *float64 `json:"area_ping"`
+	RoomType          *string  `json:"room_type"`
+	IsColiving        *bool    `json:"is_coliving"`
+	Floor             *int     `json:"floor"`
+	TotalFloors       *int     `json:"total_floors"`
+	HasElevator       *bool    `json:"has_elevator"`
+	HasBalcony        *bool    `json:"has_balcony"`
+	HasWashingMachine *bool    `json:"has_washing_machine"`
+	PetsAllowed       *bool    `json:"pets_allowed"`
+	MinLeaseMonths    *int     `json:"min_lease_months"`
+	GenderRestriction *string  `json:"gender_restriction"`
+}
+
+func flatten(r rawRecord) RentalPost {
+	return RentalPost{
+		PostID:            r.PostID,
+		PostURL:           r.PostURL,
+		Timestamp:         r.Timestamp,
+		Title:             r.Extracted.Title,
+		Price:             r.Extracted.Price,
+		Lat:               r.Latitude,
+		Lng:               r.Longitude,
+		City:              r.Extracted.City,
+		District:          r.Extracted.District,
+		Address:           r.Extracted.Address,
+		Content:           r.Content,
+		Images:            r.Images,
+		AreaPing:          r.Extracted.AreaPing,
+		RoomType:          r.Extracted.RoomType,
+		IsColiving:        r.Extracted.IsColiving,
+		Floor:             r.Extracted.Floor,
+		TotalFloors:       r.Extracted.TotalFloors,
+		HasElevator:       r.Extracted.HasElevator,
+		HasBalcony:        r.Extracted.HasBalcony,
+		HasWashingMachine: r.Extracted.HasWashingMachine,
+		PetsAllowed:       r.Extracted.PetsAllowed,
+		MinLeaseMonths:    r.Extracted.MinLeaseMonths,
+		GenderRestriction: r.Extracted.GenderRestriction,
+	}
 }
 
 func loadListings(path string) ([]RentalPost, error) {
@@ -27,16 +103,19 @@ func loadListings(path string) ([]RentalPost, error) {
 	}
 	defer f.Close()
 
-	var listings []RentalPost
+	var results []RentalPost
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		var p RentalPost
-		if err := json.Unmarshal(scanner.Bytes(), &p); err != nil {
+		var r rawRecord
+		if err := json.Unmarshal(scanner.Bytes(), &r); err != nil {
 			return nil, err
 		}
-		listings = append(listings, p)
+		if r.Extracted.IsRental == nil || !*r.Extracted.IsRental {
+			continue
+		}
+		results = append(results, flatten(r))
 	}
-	return listings, scanner.Err()
+	return results, scanner.Err()
 }
 
 var listings []RentalPost

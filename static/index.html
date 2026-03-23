@@ -5,157 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>rent-tw — 台灣租屋地圖</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; }
-
-    header {
-      background: #1a6b3c;
-      color: #fff;
-      padding: 0.75rem 1.25rem;
-      font-size: 1.1rem;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-
-    #content {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    /* 左側列表 */
-    #sidebar {
-      width: 240px;
-      flex-shrink: 0;
-      border-right: 1px solid #e0e0e0;
-      display: flex;
-      flex-direction: column;
-      background: #fafafa;
-    }
-    #sidebar-header {
-      padding: 0.75rem 1rem;
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: #555;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    #sidebar-list {
-      list-style: none;
-      overflow-y: auto;
-      flex: 1;
-    }
-    .sidebar-item {
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid #f0f0f0;
-      cursor: pointer;
-    }
-    .sidebar-item:hover { background: #f0f7f3; }
-    .sidebar-item.active { background: #e6f4ec; }
-    .sidebar-item-title { font-size: 0.9rem; font-weight: 600; }
-    .sidebar-item-meta { font-size: 0.78rem; color: #888; margin-top: 0.2rem; }
-    .sidebar-item-price { color: #1a6b3c; font-weight: 600; }
-
-    #map { flex: 1; }
-
-    /* 右側詳情面板 */
-    #panel {
-      width: 0;
-      flex-shrink: 0;
-      background: #fff;
-      border-left: none;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transition: width 0.25s ease;
-      position: relative;
-    }
-    #panel.open {
-      width: 340px;
-      border-left: 1px solid #e0e0e0;
-    }
-
-    #panel-close {
-      position: absolute;
-      top: 0.6rem;
-      right: 0.75rem;
-      background: none;
-      border: none;
-      font-size: 1.3rem;
-      cursor: pointer;
-      color: #555;
-      line-height: 1;
-    }
-    #panel-close:hover { color: #000; }
-
-    #panel-body {
-      padding: 1.25rem 1rem;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    #panel-city {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #1a6b3c;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.4rem;
-    }
-
-    #panel-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      line-height: 1.4;
-    }
-
-    #panel-price {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #1a6b3c;
-      margin-bottom: 1rem;
-    }
-    #panel-price span {
-      font-size: 0.85rem;
-      font-weight: 400;
-      color: #666;
-    }
-
-    #panel-images {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-    #panel-images img {
-      width: 100%;
-      max-height: 200px;
-      object-fit: cover;
-      border-radius: 6px;
-    }
-
-    #panel-content {
-      font-size: 0.9rem;
-      color: #333;
-      line-height: 1.7;
-      margin-bottom: 1.25rem;
-    }
-
-    #panel-link {
-      display: block;
-      background: #1877f2;
-      color: #fff;
-      text-align: center;
-      padding: 0.6rem 1rem;
-      border-radius: 6px;
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    #panel-link:hover { background: #145db2; }
-    #panel-link.hidden { display: none; }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
@@ -164,6 +14,42 @@
 <div id="content">
   <div id="sidebar">
     <div id="sidebar-header">租屋列表</div>
+    <details id="filters" open>
+      <summary>篩選條件</summary>
+      <div class="filter-body">
+        <div class="filter-group">
+          <label>租金 (NT$/月)</label>
+          <div class="filter-row">
+            <input type="number" id="f-price-min" placeholder="最低" min="0" step="1000">
+            <span>~</span>
+            <input type="number" id="f-price-max" placeholder="最高" min="0" step="1000">
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>房型</label>
+          <div class="filter-checks" id="f-room-type"></div>
+        </div>
+        <div class="filter-group">
+          <label>條件</label>
+          <div class="filter-toggles">
+            <label><input type="checkbox" id="f-elevator"><span>有電梯</span></label>
+            <label><input type="checkbox" id="f-balcony"><span>有陽台</span></label>
+            <label><input type="checkbox" id="f-washer"><span>有洗衣機</span></label>
+            <label><input type="checkbox" id="f-pets"><span>可養寵物</span></label>
+          </div>
+        </div>
+        <div id="filter-count"></div>
+      </div>
+    </details>
+    <div id="sort-bar">
+      <label for="sort-select">排序</label>
+      <select id="sort-select">
+        <option value="time-desc">時間 新→舊</option>
+        <option value="time-asc">時間 舊→新</option>
+        <option value="price-asc">價錢 低→高</option>
+        <option value="price-desc">價錢 高→低</option>
+      </select>
+    </div>
     <ul id="sidebar-list"></ul>
   </div>
 
@@ -210,13 +96,95 @@
   const elLink     = document.getElementById('panel-link');
   const sidebarList = document.getElementById('sidebar-list');
 
+  const defaultIcon = new L.Icon.Default();
+  const hoverIcon   = new L.Icon.Default({ className: 'lf-pin-orange', iconSize: [38, 62], iconAnchor: [19, 62], shadowSize: [62, 62] });
+  const activeIcon  = new L.Icon.Default({ className: 'lf-pin-green',  iconSize: [38, 62], iconAnchor: [19, 62], shadowSize: [62, 62] });
+
   let allPosts = [];
+  let selectedPostId = null;
   const markerMap = new Map(); // id -> marker
 
+  // --- 篩選 ---
+  const fPriceMin  = document.getElementById('f-price-min');
+  const fPriceMax  = document.getElementById('f-price-max');
+  const fRoomType  = document.getElementById('f-room-type');
+  const fElevator  = document.getElementById('f-elevator');
+  const fBalcony   = document.getElementById('f-balcony');
+  const fWasher    = document.getElementById('f-washer');
+  const fPets      = document.getElementById('f-pets');
+  const filterCount = document.getElementById('filter-count');
+  const sortSelect  = document.getElementById('sort-select');
+
+  function getSelectedRoomTypes() {
+    return [...fRoomType.querySelectorAll('input:checked')].map(cb => cb.value);
+  }
+
+  function matchesFilters(post) {
+    const pMin = fPriceMin.value !== '' ? Number(fPriceMin.value) : null;
+    const pMax = fPriceMax.value !== '' ? Number(fPriceMax.value) : null;
+    if (pMin !== null && (post.price == null || post.price < pMin)) return false;
+    if (pMax !== null && (post.price == null || post.price > pMax)) return false;
+
+    const roomTypes = getSelectedRoomTypes();
+    if (roomTypes.length > 0 && (post.room_type == null || !roomTypes.includes(post.room_type))) return false;
+
+    if (fElevator.checked && !post.has_elevator) return false;
+    if (fBalcony.checked  && !post.has_balcony)  return false;
+    if (fWasher.checked   && !post.has_washing_machine) return false;
+    if (fPets.checked     && !post.pets_allowed) return false;
+
+    return true;
+  }
+
+  function applyFilters() {
+    const total = allPosts.length;
+    let matched = 0;
+    allPosts.forEach(post => {
+      const show = matchesFilters(post);
+      if (show) matched++;
+      const marker = markerMap.get(post.post_id);
+      if (marker) {
+        if (show) marker.addTo(map);
+        else marker.remove();
+      }
+    });
+    filterCount.textContent = `顯示 ${matched} / ${total} 筆`;
+    updateSidebar();
+  }
+
+  function buildRoomTypeOptions() {
+    const types = [...new Set(allPosts.map(p => p.room_type).filter(Boolean))].sort();
+    fRoomType.innerHTML = '';
+    types.forEach(t => {
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = t;
+      cb.addEventListener('change', applyFilters);
+      const span = document.createElement('span');
+      span.textContent = t;
+      label.appendChild(cb);
+      label.appendChild(span);
+      fRoomType.appendChild(label);
+    });
+  }
+
+  [fPriceMin, fPriceMax].forEach(el => el.addEventListener('input', applyFilters));
+  [fElevator, fBalcony, fWasher, fPets].forEach(el => el.addEventListener('change', applyFilters));
+  sortSelect.addEventListener('change', updateSidebar);
+
   function openPanel(post) {
-    elCity.textContent  = post.city;
-    elTitle.textContent = post.title;
-    elPrice.innerHTML   = `NT$${post.price.toLocaleString('zh-TW')} <span>/ 月</span>`;
+    elCity.textContent  = post.city || '';
+    elTitle.textContent = post.title || '(無標題)';
+    elPrice.textContent = '';
+    if (post.price != null) {
+      elPrice.textContent = 'NT$' + post.price.toLocaleString('zh-TW') + ' ';
+      const unit = document.createElement('span');
+      unit.textContent = '/ 月';
+      elPrice.appendChild(unit);
+    } else {
+      elPrice.textContent = '價格未知';
+    }
     elContent.textContent = post.content || '';
 
     elImages.innerHTML = '';
@@ -227,8 +195,8 @@
       elImages.appendChild(img);
     });
 
-    if (post.post_link) {
-      elLink.href = post.post_link;
+    if (post.post_url) {
+      elLink.href = post.post_url;
       elLink.classList.remove('hidden');
     } else {
       elLink.classList.add('hidden');
@@ -238,30 +206,59 @@
   }
 
   function selectPost(post) {
+    // 還原前一個選中的圖釘
+    if (selectedPostId !== null) {
+      markerMap.get(selectedPostId)?.setIcon(defaultIcon);
+    }
+    selectedPostId = post.post_id;
+    markerMap.get(post.post_id)?.setIcon(activeIcon);
+
     openPanel(post);
     // 更新 sidebar active 狀態
     sidebarList.querySelectorAll('.sidebar-item').forEach(li => {
-      li.classList.toggle('active', Number(li.dataset.id) === post.id);
+      li.classList.toggle('active', li.dataset.id === post.post_id);
     });
   }
 
   function updateSidebar() {
     const bounds = map.getBounds();
-    const visible = allPosts.filter(p => bounds.contains([p.lat, p.lng]));
+    const visible = allPosts.filter(p => p.lat != null && p.lng != null && bounds.contains([p.lat, p.lng]) && matchesFilters(p));
+
+    const sortVal = sortSelect.value;
+    visible.sort((a, b) => {
+      if (sortVal === 'time-desc') return (b.timestamp || '').localeCompare(a.timestamp || '');
+      if (sortVal === 'time-asc')  return (a.timestamp || '').localeCompare(b.timestamp || '');
+      if (sortVal === 'price-asc') return (a.price ?? Infinity) - (b.price ?? Infinity);
+      if (sortVal === 'price-desc') return (b.price ?? -Infinity) - (a.price ?? -Infinity);
+      return 0;
+    });
+
     sidebarList.innerHTML = '';
     visible.forEach(post => {
       const li = document.createElement('li');
       li.className = 'sidebar-item';
-      li.dataset.id = post.id;
-      li.innerHTML = `
-        <div class="sidebar-item-title">${post.title}</div>
-        <div class="sidebar-item-meta">
-          ${post.city} &nbsp;·&nbsp;
-          <span class="sidebar-item-price">NT$${post.price.toLocaleString('zh-TW')}</span>
-        </div>`;
+      li.dataset.id = post.post_id;
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'sidebar-item-title';
+      titleDiv.textContent = post.title || '(無標題)';
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'sidebar-item-meta';
+      metaDiv.textContent = (post.city || '') + ' \u00A0·\u00A0 ';
+      const priceSpan = document.createElement('span');
+      priceSpan.className = 'sidebar-item-price';
+      priceSpan.textContent = post.price != null ? 'NT$' + post.price.toLocaleString('zh-TW') : '價格未知';
+      metaDiv.appendChild(priceSpan);
+      li.appendChild(titleDiv);
+      li.appendChild(metaDiv);
       li.addEventListener('click', () => {
         map.setView([post.lat, post.lng], map.getZoom());
         selectPost(post);
+      });
+      li.addEventListener('mouseenter', () => {
+        markerMap.get(post.post_id)?.setIcon(hoverIcon);
+      });
+      li.addEventListener('mouseleave', () => {
+        markerMap.get(post.post_id)?.setIcon(post.post_id === selectedPostId ? activeIcon : defaultIcon);
       });
       sidebarList.appendChild(li);
     });
@@ -270,6 +267,10 @@
   panelClose.addEventListener('click', () => {
     panel.classList.remove('open');
     sidebarList.querySelectorAll('.sidebar-item').forEach(li => li.classList.remove('active'));
+    if (selectedPostId !== null) {
+      markerMap.get(selectedPostId)?.setIcon(defaultIcon);
+      selectedPostId = null;
+    }
   });
 
   map.on('moveend zoomend', updateSidebar);
@@ -281,13 +282,14 @@
     })
     .then(listings => {
       allPosts = listings;
-      listings.forEach(post => {
-        const marker = L.marker([post.lat, post.lng])
+      listings.filter(p => p.lat != null && p.lng != null).forEach(post => {
+        const marker = L.marker([post.lat, post.lng], { icon: defaultIcon })
           .addTo(map)
           .on('click', () => selectPost(post));
-        markerMap.set(post.id, marker);
+        markerMap.set(post.post_id, marker);
       });
-      updateSidebar();
+      buildRoomTypeOptions();
+      applyFilters();
     })
     .catch(err => {
       console.error(err);
